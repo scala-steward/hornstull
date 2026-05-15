@@ -51,6 +51,35 @@ supervised:
   // ... use cmds inside this scope ...
 ```
 
+For comparison, the same setup in cats-effect tagless-final style would
+roughly look like:
+
+```scala
+trait RedisOps[F[_]]:
+  def set(key: String, value: String): F[Unit]
+  def get(key: String): F[Option[String]]
+
+object RedisOps:
+  def resource[F[_]: Sync](uri: String): Resource[F, RedisOps[F]] =
+    for
+      client <- Resource.fromAutoCloseable(Sync[F].delay(RedisClient.create(uri)))
+      conn   <- Resource.fromAutoCloseable(Sync[F].delay(client.connect()))
+      cmds   =  conn.sync()
+    yield new RedisOps[F]:
+      def set(k: String, v: String) = Sync[F].delay { cmds.set(k, v); () }
+      def get(k: String)            = Sync[F].delay(Option(cmds.get(k)))
+
+// at the edge of the world:
+RedisOps.resource[IO]("redis://localhost:6379").use: redis =>
+  redis.set("foo", "bar") *> redis.get("foo").flatMap(IO.println)
+```
+
+`Resource` plays the role `useCloseableInScope` plays in Ox; the abstract
+`F[_]` lets you defer the choice of effect (test with a fake, run with
+`IO`). The Ox version drops the abstraction layer and the wrapper `trait`
+entirely — calls to `cmds` happen directly inside the scope, with the same
+"resources released on exit" guarantee.
+
 Notes:
 
 - The URI string `redis://localhost:6379` is the direct equivalent of
