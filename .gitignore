@@ -1,0 +1,5 @@
+.metals/
+.vscode/
+project/project
+project/target
+target/
