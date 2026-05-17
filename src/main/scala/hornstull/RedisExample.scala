@@ -9,8 +9,8 @@ def redisClient(uri: String)(using OxUnsupervised): RedisClient =
 @main def redisExample(): Unit =
   supervised:
     val client = redisClient("redis://localhost:6379")
-    val conn   = useCloseableInScope(client.connect())
-    val cmds   = conn.sync()
+    val conn = useCloseableInScope(client.connect())
+    val cmds = conn.sync()
 
     cmds.set("foo", "bar")
     val result: Option[String] = Option(cmds.get("foo"))
